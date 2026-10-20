@@ -252,8 +252,15 @@ public class LibApi {
             case 404: hint = "Не найдено (для 18+ и скрытых тайтлов нужен вход или прокси)"; break;
             case 429: hint = "Слишком много запросов, подождите"; break;
             case 451: hint = "Недоступно в вашем регионе — включите прокси"; break;
+            case 500:
+            case 502:
+            case 503:
+            case 504:
+                hint = "Сервера *LIB сейчас не работают (HTTP " + code + "). Это на стороне сайта — "
+                        + "проверьте mangalib.org в браузере и попробуйте позже";
+                break;
             default: hint = "Ошибка сервера HTTP " + code;
         }
-        return msg == null || "Not Found".equals(msg) ? hint : hint + ": " + msg;
+        return msg == null || "Not Found".equals(msg) || code >= 500 ? hint : hint + ": " + msg;
     }
 }

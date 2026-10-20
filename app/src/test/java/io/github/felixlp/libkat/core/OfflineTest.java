@@ -91,5 +91,6 @@ public class OfflineTest {
         assertTrue(LibApi.describe(404, "{\"data\":{\"toast\":{\"type\":\"silent\",\"message\":\"Not Found\"}}}")
                 .startsWith("Не найдено"));
         assertTrue(LibApi.describe(403, "<html>ddos-guard</html>").contains("прокси"));
+        assertTrue(LibApi.describe(503, "<html>Service Unavailable</html>").contains("на стороне сайта"));
     }
 }
