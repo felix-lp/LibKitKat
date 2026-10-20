@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="api_domain_names">
+        <item>Основной (api.cdnlibs.org)</item>
+        <item>Резервный (api2.mangalib.me)</item>
+        <item>Резервный (hapi.hentaicdn.org)</item>
+        <item>Резервный (api.imglib.info)</item>
+    </string-array>
+    <string-array name="api_domain_values">
+        <item>https://api.cdnlibs.org</item>
+        <item>https://api2.mangalib.me</item>
+        <item>https://hapi.hentaicdn.org</item>
+        <item>https://api.imglib.info</item>
+    </string-array>
+
+    <string-array name="proxy_mode_names">
+        <item>Выключен</item>
+        <item>Только API и вход (картинки и видео напрямую)</item>
+        <item>Весь трафик</item>
+    </string-array>
+    <string-array name="proxy_mode_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+    </string-array>
+
+    <string-array name="img_server_names">
+        <item>Сжатый (быстрее, JPEG)</item>
+        <item>Первый (оригинал)</item>
+        <item>Второй (оригинал)</item>
+    </string-array>
+    <string-array name="img_server_values">
+        <item>compress</item>
+        <item>main</item>
+        <item>secondary</item>
+    </string-array>
+
+    <string-array name="title_lang_names">
+        <item>Русские</item>
+        <item>Английские / оригинал</item>
+    </string-array>
+    <string-array name="title_lang_values">
+        <item>rus</item>
+        <item>eng</item>
+    </string-array>
+
+    <string-array name="player_names">
+        <item>Встроенный</item>
+        <item>Внешний (VLC и др., с субтитрами)</item>
+    </string-array>
+    <string-array name="player_values">
+        <item>internal</item>
+        <item>external</item>
+    </string-array>
+
+    <string-array name="quality_names">
+        <item>360p</item>
+        <item>480p</item>
+        <item>720p</item>
+        <item>1080p</item>
+    </string-array>
+    <string-array name="quality_values">
+        <item>360</item>
+        <item>480</item>
+        <item>720</item>
+        <item>1080</item>
+    </string-array>
+</resources>

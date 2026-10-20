@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory android:title="Аккаунт">
+        <Preference
+            android:key="account"
+            android:title="Вход в аккаунт *LIB" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Прокси SOCKS5">
+        <ListPreference
+            android:defaultValue="0"
+            android:entries="@array/proxy_mode_names"
+            android:entryValues="@array/proxy_mode_values"
+            android:key="proxy_mode"
+            android:title="Режим" />
+        <EditTextPreference
+            android:inputType="textUri"
+            android:key="proxy_host"
+            android:singleLine="true"
+            android:title="Хост" />
+        <EditTextPreference
+            android:defaultValue="1080"
+            android:inputType="number"
+            android:key="proxy_port"
+            android:singleLine="true"
+            android:title="Порт" />
+        <EditTextPreference
+            android:key="proxy_user"
+            android:singleLine="true"
+            android:title="Логин (если нужен)" />
+        <EditTextPreference
+            android:inputType="textPassword"
+            android:key="proxy_pass"
+            android:singleLine="true"
+            android:title="Пароль" />
+        <Preference
+            android:key="proxy_test"
+            android:summary="Узнать внешний IP и проверить доступ к API"
+            android:title="Проверить соединение" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Сеть">
+        <ListPreference
+            android:defaultValue="https://api.cdnlibs.org"
+            android:entries="@array/api_domain_names"
+            android:entryValues="@array/api_domain_values"
+            android:key="api_domain"
+            android:title="Домен API" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Чтение">
+        <ListPreference
+            android:defaultValue="compress"
+            android:entries="@array/img_server_names"
+            android:entryValues="@array/img_server_values"
+            android:key="img_server"
+            android:title="Сервер изображений" />
+        <ListPreference
+            android:defaultValue="rus"
+            android:entries="@array/title_lang_names"
+            android:entryValues="@array/title_lang_values"
+            android:key="title_lang"
+            android:title="Названия" />
+        <Preference
+            android:key="clear_cache"
+            android:title="Очистить кэш картинок" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Аниме">
+        <ListPreference
+            android:defaultValue="internal"
+            android:entries="@array/player_names"
+            android:entryValues="@array/player_values"
+            android:key="player"
+            android:title="Плеер" />
+        <ListPreference
+            android:defaultValue="720"
+            android:entries="@array/quality_names"
+            android:entryValues="@array/quality_values"
+            android:key="video_quality"
+            android:title="Качество (не выше)" />
+    </PreferenceCategory>
+</PreferenceScreen>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#FF141414</color>
+    <color name="accent">#FFF2994A</color>
+    <color name="text_dim">#FF9A9A9A</color>
+
+    <style name="Theme.LibKat" parent="@android:style/Theme.Holo">
+        <item name="android:windowBackground">@color/bg</item>
+    </style>
+
+    <!-- Шапка поверх страниц, скрыта по умолчанию: тап по центру показывает её -->
+    <style name="Theme.LibKat.Reader">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowActionBarOverlay">true</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+
+    <style name="Theme.LibKat.Player" parent="@android:style/Theme.Holo.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- На API < 21 AGP сам растрирует вектор в PNG для каждой плотности -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#FFF2994A"
+        android:pathData="M10,4h28a6,6 0,0 1,6 6v28a6,6 0,0 1,-6 6h-28a6,6 0,0 1,-6 -6v-28a6,6 0,0 1,6 -6z" />
+    <path
+        android:fillColor="#FF1E1E1E"
+        android:pathData="M12,11h10a3,3 0,0 1,3 3v23a3,3 0,0 0,-3 -3h-10z" />
+    <path
+        android:fillColor="#FF3A3A3A"
+        android:pathData="M36,11h-8a3,3 0,0 0,-3 3v23a3,3 0,0 1,3 -3h8z" />
+    <path
+        android:fillColor="#FFF2994A"
+        android:pathData="M15,15h4v12h5v3h-9z" />
+</vector>
