@@ -30,6 +30,8 @@ import okhttp3.Response;
 public class ImageLoader {
     /** Максимальная высота одного тайла в пикселях (безопасно для GPU 2013 года). */
     private static final int MAX_TILE = 2048;
+    /** До такого размера (обложки) декодируем в ARGB_8888. */
+    private static final long FULL_COLOR_PIXELS = 400L * 600;
 
     public static final class Decoded {
         public final Bitmap[] tiles;
@@ -208,7 +210,9 @@ public class ImageLoader {
         sample *= extraSample;
         BitmapFactory.Options o = new BitmapFactory.Options();
         o.inSampleSize = sample;
-        o.inPreferredConfig = Bitmap.Config.RGB_565;
+        // Обложкам — полный цвет (в 565 на градиентах полосы), страницам — 565 ради памяти
+        long pixels = (long) (bounds.outWidth / sample) * (bounds.outHeight / sample);
+        o.inPreferredConfig = pixels <= FULL_COLOR_PIXELS ? Bitmap.Config.ARGB_8888 : Bitmap.Config.RGB_565;
         o.inDither = true;
 
         if (bounds.outHeight / sample <= MAX_TILE) {

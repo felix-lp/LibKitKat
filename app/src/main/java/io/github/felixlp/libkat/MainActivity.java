@@ -23,18 +23,21 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
+import io.github.felixlp.libkat.core.Folder;
 import io.github.felixlp.libkat.core.LibApi;
 import io.github.felixlp.libkat.core.Site;
 import io.github.felixlp.libkat.core.Text;
 import io.github.felixlp.libkat.core.Title;
 
 public class MainActivity extends Activity {
-    private static final String[] MODES = {
-            "Популярное", "По рейтингу", "По просмотрам", "Новинки", "Обновлённые",
-            "История", "Читаю", "В планах", "Брошено", "Прочитано", "Любимые"
+    /** После «Истории» в списке идут папки закладок аккаунта — они свои у каждого сайта. */
+    private static final String[] BASE_MODES = {
+            "Популярное", "По рейтингу", "По просмотрам", "Новинки", "Обновлённые", "История"
     };
     private static final String[] SORTS = {
             LibApi.SORT_POPULAR, LibApi.SORT_RATING, LibApi.SORT_VIEWS, LibApi.SORT_NEW, LibApi.SORT_UPDATED
@@ -42,6 +45,8 @@ public class MainActivity extends Activity {
     private static final int MODE_HISTORY = 5;
 
     private final List<Title> items = new ArrayList<>();
+    private final List<Folder> folders = new ArrayList<>();
+    private final List<String> modeLabels = new ArrayList<>(Arrays.asList(BASE_MODES));
     private Site site;
     private int mode;
     private String query = "";
@@ -50,10 +55,13 @@ public class MainActivity extends Activity {
     private boolean loading;
     /** Номер запроса: ответы на устаревшие запросы игнорируются. */
     private int generation;
+    private int folderGeneration;
 
     private EditText search;
     private TextView status;
     private TitleAdapter adapter;
+    private Spinner modeSpinner;
+    private ArrayAdapter<String> modesAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,10 +91,10 @@ public class MainActivity extends Activity {
             }
         });
 
-        Spinner modeSpinner = (Spinner) findViewById(R.id.mode);
-        ArrayAdapter<String> modes = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, MODES);
-        modes.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        modeSpinner.setAdapter(modes);
+        modeSpinner = (Spinner) findViewById(R.id.mode);
+        modesAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, modeLabels);
+        modesAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        modeSpinner.setAdapter(modesAdapter);
         modeSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -140,7 +148,13 @@ public class MainActivity extends Activity {
                 if (sites[position] != site) {
                     site = sites[position];
                     App.get().prefs.setSite(site);
+                    if (mode > MODE_HISTORY) {
+                        // Папки у сайтов разные (у аниме — «Смотрю», «Запланировано»…)
+                        mode = 0;
+                        modeSpinner.setSelection(0);
+                    }
                     reload();
+                    loadFolders();
                 }
                 return true;
             }
@@ -153,6 +167,7 @@ public class MainActivity extends Activity {
         super.onResume();
         // История могла измениться, пока читали
         if (mode == MODE_HISTORY) reload();
+        loadFolders();
         invalidateOptionsMenu();
     }
 
@@ -176,12 +191,6 @@ public class MainActivity extends Activity {
             status.setText(items.isEmpty() ? "История пуста" : "");
             return;
         }
-        if (mode > MODE_HISTORY && !App.get().auth().loggedIn()) {
-            hasNext = false;
-            page = 1;
-            status.setText("Списки закладок доступны после входа в аккаунт\n(меню → Аккаунт)");
-            return;
-        }
         loadMore();
     }
 
@@ -193,12 +202,14 @@ public class MainActivity extends Activity {
         final Site s = site;
         final String q = query;
         final String sort = mode < MODE_HISTORY ? SORTS[mode] : null;
-        final int list = mode > MODE_HISTORY ? mode - MODE_HISTORY : 0;
+        final int folder = mode > MODE_HISTORY ? folders.get(mode - MODE_HISTORY - 1).id : 0;
         if (items.isEmpty()) status.setText("Загрузка…");
         Bg.run(new Bg.Job<LibApi.Paged<Title>>() {
             @Override
             public LibApi.Paged<Title> run() throws Exception {
-                return App.get().api().catalog(s, q, sort, list, next);
+                LibApi api = App.get().api();
+                if (folder != 0) return api.bookmarks(s, api.userId(), folder, q, next);
+                return api.catalog(s, q, sort, next);
             }
         }, new Bg.Done<LibApi.Paged<Title>>() {
             @Override
@@ -217,6 +228,54 @@ public class MainActivity extends Activity {
                 status.setText(items.isEmpty() ? "Ничего не найдено" : "");
             }
         });
+    }
+
+    /** Папки закладок текущего сайта; без входа в спиннере только каталог и история. */
+    private void loadFolders() {
+        final int gen = ++folderGeneration;
+        final Site s = site;
+        if (!App.get().auth().loggedIn()) {
+            applyFolders(Collections.<Folder>emptyList());
+            return;
+        }
+        Bg.run(new Bg.Job<List<Folder>>() {
+            @Override
+            public List<Folder> run() throws Exception {
+                LibApi api = App.get().api();
+                return api.folders(s, api.userId());
+            }
+        }, new Bg.Done<List<Folder>>() {
+            @Override
+            public void done(List<Folder> result, Exception error) {
+                if (gen != folderGeneration || isFinishing() || error != null) return;
+                applyFolders(result);
+            }
+        });
+    }
+
+    private void applyFolders(List<Folder> fresh) {
+        int current = mode > MODE_HISTORY ? folders.get(mode - MODE_HISTORY - 1).id : 0;
+        folders.clear();
+        // Пустые папки (свои у других сайтов) только загромождают список
+        for (Folder f : fresh) {
+            if (f.count > 0) folders.add(f);
+        }
+        modeLabels.subList(BASE_MODES.length, modeLabels.size()).clear();
+        for (Folder f : folders) modeLabels.add(f.label());
+        modesAdapter.notifyDataSetChanged();
+        if (current == 0) return;
+        for (int i = 0; i < folders.size(); i++) {
+            if (folders.get(i).id == current) {
+                // Счётчики могли поменяться, а папка та же — просто держим выбор на ней
+                mode = BASE_MODES.length + i;
+                modeSpinner.setSelection(mode);
+                return;
+            }
+        }
+        // Папку удалили или вышли из аккаунта
+        mode = 0;
+        modeSpinner.setSelection(0);
+        reload();
     }
 
     @Override
@@ -279,7 +338,8 @@ public class MainActivity extends Activity {
             if (t.rating != null) info.add("★" + t.rating);
             info.add(t.age);
             ((TextView) v.findViewById(R.id.info)).setText(Text.join(" · ", info));
-            ((CoverView) v.findViewById(R.id.cover)).load(t.thumb, t.site.referer());
+            // Миниатюра всего 100×143 — на любом современном экране это мыло, берём полную обложку
+            ((CoverView) v.findViewById(R.id.cover)).load(t.cover != null ? t.cover : t.thumb, t.site.referer());
             return v;
         }
     }

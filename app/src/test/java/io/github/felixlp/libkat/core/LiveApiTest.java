@@ -32,13 +32,13 @@ public class LiveApiTest {
 
     @Test
     public void mangaCatalogDetailsChaptersPages() throws Exception {
-        LibApi.Paged<Title> page = api.catalog(Site.MANGALIB, null, LibApi.SORT_POPULAR, 0, 1);
+        LibApi.Paged<Title> page = api.catalog(Site.MANGALIB, null, LibApi.SORT_POPULAR, 1);
         assertTrue(page.items.size() > 10);
         assertTrue(page.hasNext);
         Title first = page.items.get(0);
         System.out.println("Популярное: " + first.displayName(true) + " / " + first.slugUrl);
 
-        LibApi.Paged<Title> found = api.catalog(Site.MANGALIB, "Берсерк", null, 0, 1);
+        LibApi.Paged<Title> found = api.catalog(Site.MANGALIB, "Берсерк", null, 1);
         assertFalse(found.items.isEmpty());
         Title t = found.items.get(0);
         System.out.println("Поиск «Берсерк»: " + t.displayName(true) + " " + t.slugUrl);
@@ -67,8 +67,8 @@ public class LiveApiTest {
     @Test
     public void sortsAndLatest() throws Exception {
         for (String sort : new String[]{LibApi.SORT_RATING, LibApi.SORT_VIEWS, LibApi.SORT_NEW, LibApi.SORT_UPDATED}) {
-            assertFalse(sort, api.catalog(Site.MANGALIB, null, sort, 0, 1).items.isEmpty());
-            assertFalse(sort, api.catalog(Site.ANIMELIB, null, sort, 0, 1).items.isEmpty());
+            assertFalse(sort, api.catalog(Site.MANGALIB, null, sort, 1).items.isEmpty());
+            assertFalse(sort, api.catalog(Site.ANIMELIB, null, sort, 1).items.isEmpty());
         }
         assertFalse(api.latest(Site.MANGALIB, 1).items.isEmpty());
     }
@@ -76,7 +76,7 @@ public class LiveApiTest {
     @Test
     public void otherSites() throws Exception {
         for (Site s : new Site[]{Site.HENTAILIB, Site.SLASHLIB}) {
-            LibApi.Paged<Title> p = api.catalog(s, null, null, 0, 1);
+            LibApi.Paged<Title> p = api.catalog(s, null, null, 1);
             assertFalse(s.title, p.items.isEmpty());
             assertEquals(s, p.items.get(0).site);
             System.out.println(s.title + ": " + p.items.get(0).displayName(true));
@@ -86,7 +86,7 @@ public class LiveApiTest {
 
     @Test
     public void animeWithoutLoginHasOnlyKodik() throws Exception {
-        Title t = api.catalog(Site.ANIMELIB, "Фрирен", null, 0, 1).items.get(0);
+        Title t = api.catalog(Site.ANIMELIB, "Фрирен", null, 1).items.get(0);
         System.out.println("Аниме: " + t.displayName(true) + " " + t.slugUrl);
         Title d = api.details(Site.ANIMELIB, t.slugUrl);
         assertNotNull(d.summary);
@@ -100,7 +100,7 @@ public class LiveApiTest {
 
     @Test
     public void hiddenChapterNeedsLogin() throws Exception {
-        Title t = api.catalog(Site.HENTAILIB, null, null, 0, 1).items.get(0);
+        Title t = api.catalog(Site.HENTAILIB, null, null, 1).items.get(0);
         List<Chapter> chapters = api.chapters(Site.HENTAILIB, t.slugUrl);
         assumeTrue(!chapters.isEmpty());
         try {

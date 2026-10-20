@@ -77,6 +77,11 @@ public class Auth {
         store.save(null);
     }
 
+    /** Сохранить изменения в текущем токене (например, дозаполненный id). */
+    public synchronized void persist() {
+        store.save(token);
+    }
+
     private synchronized void set(Token t) {
         token = t;
         loaded = true;

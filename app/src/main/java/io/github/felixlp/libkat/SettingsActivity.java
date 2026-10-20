@@ -135,7 +135,7 @@ public class SettingsActivity extends PreferenceActivity implements SharedPrefer
                 sb.append('\n');
                 try {
                     t0 = System.currentTimeMillis();
-                    int n = App.get().api().catalog(Site.MANGALIB, null, null, 0, 1).items.size();
+                    int n = App.get().api().catalog(Site.MANGALIB, null, null, 1).items.size();
                     sb.append("API: работает (").append(System.currentTimeMillis() - t0).append(" мс, тайтлов: ")
                             .append(n).append(')');
                 } catch (Exception e) {

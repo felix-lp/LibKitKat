@@ -168,7 +168,7 @@ public class Socks5Test {
     public void apiThroughSocksWithRemoteDns() throws Exception {
         assumeTrue("live-тесты выключены", Boolean.getBoolean("live"));
         LibApi api = new LibApi(client("kat", "secret"), LibApi.DEFAULT_DOMAIN, null);
-        LibApi.Paged<Title> p = api.catalog(Site.MANGALIB, null, null, 0, 1);
+        LibApi.Paged<Title> p = api.catalog(Site.MANGALIB, null, null, 1);
         assertFalse(p.items.isEmpty());
         // Прокси получил имя хоста, а не IP — значит DNS резолвится на стороне прокси
         assertTrue(requestedHosts.toString(), requestedHosts.contains("api.cdnlibs.org:443"));
@@ -178,7 +178,7 @@ public class Socks5Test {
     public void wrongPasswordIsReported() {
         LibApi api = new LibApi(client("kat", "wrong"), LibApi.DEFAULT_DOMAIN, null);
         try {
-            api.catalog(Site.MANGALIB, null, null, 0, 1);
+            api.catalog(Site.MANGALIB, null, null, 1);
             fail("должна быть ошибка");
         } catch (IOException e) {
             assertTrue(e.getMessage(), String.valueOf(e.getMessage()).contains("логин/пароль"));
@@ -189,7 +189,7 @@ public class Socks5Test {
     public void missingCredentialsAreReported() {
         LibApi api = new LibApi(client("", ""), LibApi.DEFAULT_DOMAIN, null);
         try {
-            api.catalog(Site.MANGALIB, null, null, 0, 1);
+            api.catalog(Site.MANGALIB, null, null, 1);
             fail("должна быть ошибка");
         } catch (IOException e) {
             assertTrue(e.getMessage(), String.valueOf(e.getMessage()).contains("требует логин"));

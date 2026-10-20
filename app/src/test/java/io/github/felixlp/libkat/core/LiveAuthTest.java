@@ -61,14 +61,27 @@ public class LiveAuthTest {
     }
 
     @Test
-    public void bookmarks() throws Exception {
-        LibApi.Paged<Title> reading = api.catalog(Site.MANGALIB, null, null, 1, 1);
-        System.out.println("Закладки «Читаю»: " + reading.items.size());
+    public void bookmarkFoldersAreComplete() throws Exception {
+        for (Site site : new Site[]{Site.MANGALIB, Site.ANIMELIB}) {
+            List<Folder> folders = api.folders(site, api.userId());
+            assertFalse(folders.isEmpty());
+            for (Folder f : folders) {
+                int n = 0;
+                for (int page = 1; page < 50; page++) {
+                    LibApi.Paged<Title> p = api.bookmarks(site, api.userId(), f.id, null, page);
+                    n += p.items.size();
+                    if (!p.hasNext) break;
+                }
+                System.out.println(site.title + " / " + f.name + ": " + n + " из " + f.count);
+                // Лицензированные и закрытые тайтлы тоже должны быть на месте
+                assertEquals(f.name, f.count, n);
+            }
+        }
     }
 
     @Test
     public void animeDirectVideo() throws Exception {
-        Title t = api.catalog(Site.ANIMELIB, "Фрирен", null, 0, 1).items.get(0);
+        Title t = api.catalog(Site.ANIMELIB, "Фрирен", null, 1).items.get(0);
         List<Episode> eps = api.episodes(t.slugUrl);
         List<Player> players = api.players(eps.get(0).id);
         Player direct = null;
@@ -91,7 +104,7 @@ public class LiveAuthTest {
 
     @Test
     public void hentaiPagesWithLogin() throws Exception {
-        Title t = api.catalog(Site.HENTAILIB, null, null, 0, 1).items.get(0);
+        Title t = api.catalog(Site.HENTAILIB, null, null, 1).items.get(0);
         List<Chapter> chapters = api.chapters(Site.HENTAILIB, t.slugUrl);
         assumeTrue(!chapters.isEmpty());
         List<Page> pages = api.pages(Site.HENTAILIB, t.slugUrl, chapters.get(0), null);

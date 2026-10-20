@@ -4,10 +4,13 @@ import android.content.Context;
 import android.util.AttributeSet;
 import android.widget.ImageView;
 
-/** Обложка с пропорциями 1:1.42. */
+/** Обложка с пропорциями 1:1.42, декодируется под фактическую ширину на экране. */
 public class CoverView extends ImageView implements ImageLoader.Target {
-    private static final int DECODE_WIDTH = 240;
+    /** Шире полная обложка на сервере не бывает (375 px), больше декодировать незачем. */
+    private static final int MAX_DECODE_WIDTH = 400;
 
+    private String url;
+    private String referer;
     private String key;
 
     public CoverView(Context context, AttributeSet attrs) {
@@ -17,16 +20,28 @@ public class CoverView extends ImageView implements ImageLoader.Target {
     }
 
     public void load(String url, String referer) {
-        if (url == null) {
-            key = null;
-            setImageDrawable(null);
-            return;
-        }
-        String k = ImageLoader.key(url, DECODE_WIDTH);
+        if (url != null && url.equals(this.url) && key != null) return;
+        this.url = url;
+        this.referer = referer;
+        key = null;
+        setImageDrawable(null);
+        // До разметки ширина неизвестна — тогда загрузку запустит onSizeChanged
+        if (getWidth() > 0) start(getWidth());
+    }
+
+    private void start(int width) {
+        if (url == null) return;
+        int w = Math.min(width, MAX_DECODE_WIDTH);
+        String k = ImageLoader.key(url, w);
         if (k.equals(key)) return;
         key = k;
-        setImageDrawable(null);
-        App.get().images.load(url, referer, DECODE_WIDTH, this);
+        App.get().images.load(url, referer, w, this);
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (w > 0 && w != oldw) start(w);
     }
 
     @Override

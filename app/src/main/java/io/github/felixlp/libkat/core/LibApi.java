@@ -55,10 +55,7 @@ public class LibApi {
         return HttpUrl.parse(domain + "/api" + path).newBuilder();
     }
 
-    /**
-     * @param list номер списка закладок (1 — Читаю … 5 — Любимые) или 0 — весь каталог
-     */
-    public Paged<Title> catalog(Site site, String query, String sortBy, int list, int page) throws IOException {
+    public Paged<Title> catalog(Site site, String query, String sortBy, int page) throws IOException {
         HttpUrl.Builder u = url("/" + site.model())
                 .addQueryParameter("site_id[]", String.valueOf(site.id))
                 .addQueryParameter("page", String.valueOf(page));
@@ -67,8 +64,51 @@ public class LibApi {
             if (site.anime && SORT_UPDATED.equals(sortBy)) sortBy = "last_episode_at";
             u.addQueryParameter("sort_by", sortBy).addQueryParameter("sort_type", "desc");
         }
-        if (list > 0) u.addQueryParameter("bookmarks[]", String.valueOf(list));
         return titles(site, get(site, u.build()));
+    }
+
+    /** Папки закладок пользователя, относящиеся к сайту (у аниме свои). */
+    public List<Folder> folders(Site site, int userId) throws IOException {
+        JSONArray arr = get(site, url("/bookmarks/folder/" + userId).build()).optJSONArray("data");
+        List<Folder> out = new ArrayList<>();
+        if (arr != null) {
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.optJSONObject(i);
+                if (o == null) continue;
+                Folder f = Folder.parse(o);
+                if (f.supports(site)) out.add(f);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Содержимое папки — как в профиле на сайте. Фильтр bookmarks[] в каталоге для этого не годится:
+     * он прячет лицензированные и закрытые тайтлы.
+     */
+    public Paged<Title> bookmarks(Site site, int userId, int folderId, String query, int page) throws IOException {
+        HttpUrl.Builder u = url("/bookmarks")
+                .addQueryParameter("status", String.valueOf(folderId))
+                .addQueryParameter("user_id", String.valueOf(userId))
+                .addQueryParameter("sort_by", "updated_at")
+                .addQueryParameter("sort_type", "desc")
+                .addQueryParameter("page", String.valueOf(page));
+        if (!Text.isEmpty(query)) u.addQueryParameter("q", query);
+        JSONObject o = get(site, u.build());
+        JSONArray data = o.optJSONArray("data");
+        List<Title> items = new ArrayList<>();
+        if (data != null) {
+            for (int i = 0; i < data.length(); i++) {
+                JSONObject b = data.optJSONObject(i);
+                JSONObject media = b == null ? null : b.optJSONObject("media");
+                if (media != null) items.add(Title.parse(media, site));
+            }
+        }
+        JSONObject meta = o.optJSONObject("meta");
+        // next_page_url приходит то булевым, то строкой
+        Object next = meta == null ? null : meta.opt("next_page_url");
+        boolean hasNext = Boolean.TRUE.equals(next) || (next instanceof String && ((String) next).length() > 0);
+        return new Paged<>(items, hasNext && !items.isEmpty());
     }
 
     public Paged<Title> latest(Site site, int page) throws IOException {
@@ -182,6 +222,17 @@ public class LibApi {
         HttpUrl u = HttpUrl.parse(base + q.href);
         if (u == null) throw new ApiException(0, "Битая ссылка на видео");
         return u.toString();
+    }
+
+    /** id пользователя из токена; у старого токена без id — спрашиваем сервер. */
+    public int userId() throws IOException {
+        Token t = auth == null ? null : auth.token();
+        if (t == null) throw new ApiException(401, "Нужен вход в аккаунт");
+        if (t.userId <= 0) {
+            t.userId = me().optInt("id");
+            auth.persist();
+        }
+        return t.userId;
     }
 
     public JSONObject me() throws IOException {
