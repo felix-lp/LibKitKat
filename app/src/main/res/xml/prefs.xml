@@ -93,4 +93,20 @@
             android:key="video_quality"
             android:title="Качество (не выше)" />
     </PreferenceCategory>
+    <PreferenceCategory android:title="Обновления">
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="update_auto"
+            android:summary="Раз в 12 часов при запуске смотреть релизы на GitHub"
+            android:title="Проверять автоматически" />
+        <Preference
+            android:key="update_check"
+            android:title="Проверить обновления" />
+        <EditTextPreference
+            android:inputType="textPassword"
+            android:key="github_token"
+            android:singleLine="true"
+            android:summary="Нужен, пока репозиторий приватный: fine-grained токен с правом Contents: read"
+            android:title="Токен GitHub" />
+    </PreferenceCategory>
 </PreferenceScreen>

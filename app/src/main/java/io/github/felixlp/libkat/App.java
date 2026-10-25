@@ -23,6 +23,7 @@ public class App extends Application {
     public StreamProxy stream;
 
     private HttpClients.Tls tls;
+    private OkHttpClient directClient;
     private OkHttpClient apiClient;
     private OkHttpClient mediaClient;
     private Auth auth;
@@ -53,6 +54,7 @@ public class App extends Application {
     /** Пересобрать сетевые клиенты после смены прокси или домена API. */
     public synchronized void rebuild() {
         OkHttpClient direct = HttpClients.builder(tls).build();
+        directClient = direct;
         ProxyConfig proxy = prefs.proxy();
         OkHttpClient proxied = proxy.enabled() ? HttpClients.viaSocks(direct, proxy) : direct;
         apiClient = proxy.forApi() ? proxied : direct;
@@ -67,6 +69,11 @@ public class App extends Application {
 
     public synchronized Auth auth() {
         return auth;
+    }
+
+    /** Без прокси — для GitHub (обновления). */
+    public synchronized OkHttpClient directClient() {
+        return directClient;
     }
 
     public synchronized OkHttpClient apiClient() {

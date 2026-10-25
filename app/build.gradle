@@ -2,6 +2,11 @@ plugins {
     id 'com.android.application'
 }
 
+// Версия берётся из тега релиза (v1.2.3) при сборке в GitHub Actions, иначе — значение ниже
+def releaseTag = System.getenv('GITHUB_REF_NAME')
+def appVersion = (releaseTag != null && releaseTag ==~ /v\d+\.\d+\.\d+/) ? releaseTag.substring(1) : '0.4.0'
+def versionParts = appVersion.tokenize('.')*.toInteger()
+
 android {
     namespace 'io.github.felixlp.libkat'
     compileSdk 34
@@ -11,8 +16,10 @@ android {
         minSdk 19
         // Приложение рассчитано на KitKat; высокий targetSdk ничего не даёт, а 28 не требует runtime-разрешений
         targetSdk 28
-        versionCode 4
-        versionName '0.3.0'
+        versionCode versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]
+        versionName appVersion
+        // Откуда приложение берёт обновления (GitHub Releases)
+        buildConfigField 'String', 'UPDATE_REPO', '"felix-lp/LibKitKat"'
 
         ndk {
             // Tab 3 — armeabi-v7a, x86 оставлен для эмуляторов
@@ -39,6 +46,10 @@ android {
             minifyEnabled false
             signingConfig signingConfigs.shared
         }
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     compileOptions {

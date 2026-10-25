@@ -48,6 +48,14 @@ public class SettingsActivity extends PreferenceActivity implements SharedPrefer
                 return true;
             }
         });
+        findPreference("update_check").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            @Override
+            public boolean onPreferenceClick(Preference p) {
+                Updater.checkNow(SettingsActivity.this);
+                return true;
+            }
+        });
+        findPreference("update_check").setSummary("Установлена версия " + Updater.currentVersion());
         findPreference("clear_cache").setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
             @Override
             public boolean onPreferenceClick(final Preference p) {
@@ -88,7 +96,8 @@ public class SettingsActivity extends PreferenceActivity implements SharedPrefer
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sp, String key) {
         if (NETWORK_KEYS.contains(key)) App.get().rebuild();
-        updateSummary(key);
+        // Пароль прокси и токен в подпись не выводим
+        if (SUMMARY_KEYS.contains(key)) updateSummary(key);
     }
 
     private void updateSummary(String key) {

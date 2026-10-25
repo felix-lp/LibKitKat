@@ -129,6 +129,7 @@ public class MainActivity extends Activity {
         });
 
         setupSites();
+        Updater.checkAuto(this);
     }
 
     @SuppressWarnings("deprecation")
