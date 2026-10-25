@@ -4,6 +4,7 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -25,8 +26,10 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import io.github.felixlp.libkat.core.Folder;
 import io.github.felixlp.libkat.core.LibApi;
@@ -46,6 +49,8 @@ public class MainActivity extends Activity {
 
     private final List<Title> items = new ArrayList<>();
     private final List<Folder> folders = new ArrayList<>();
+    /** Все папки сайта (и пустые) — для подписи значков на обложках. */
+    private final Map<Integer, Folder> folderById = new HashMap<>();
     private final List<String> modeLabels = new ArrayList<>(Arrays.asList(BASE_MODES));
     private Site site;
     private int mode;
@@ -167,6 +172,8 @@ public class MainActivity extends Activity {
         super.onResume();
         // История могла измениться, пока читали
         if (mode == MODE_HISTORY) reload();
+        // Могли поменяться настройка обложек или папка тайтла в его карточке
+        adapter.notifyDataSetChanged();
         loadFolders();
         invalidateOptionsMenu();
     }
@@ -255,6 +262,8 @@ public class MainActivity extends Activity {
 
     private void applyFolders(List<Folder> fresh) {
         int current = mode > MODE_HISTORY ? folders.get(mode - MODE_HISTORY - 1).id : 0;
+        folderById.clear();
+        for (Folder f : fresh) folderById.put(f.id, f);
         folders.clear();
         // Пустые папки (свои у других сайтов) только загромождают список
         for (Folder f : fresh) {
@@ -306,6 +315,20 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void bindBadge(TextView badge, Title t) {
+        Integer changed = App.get().bookmarkChanges.get(t.site.id + ":" + t.slugUrl);
+        int status = changed != null ? changed : t.bookmarkStatus;
+        Folder f = status == 0 ? null : folderById.get(status);
+        if (f == null) {
+            badge.setVisibility(View.GONE);
+            return;
+        }
+        badge.setText(f.name);
+        badge.setBackgroundColor(Colors.parse(f.color, 0xFFF2994A));
+        badge.setTextColor(Colors.parse(f.textColor, Color.BLACK));
+        badge.setVisibility(View.VISIBLE);
+    }
+
     private final class TitleAdapter extends BaseAdapter {
         private final LayoutInflater inflater;
 
@@ -338,8 +361,10 @@ public class MainActivity extends Activity {
             if (t.rating != null) info.add("★" + t.rating);
             info.add(t.age);
             ((TextView) v.findViewById(R.id.info)).setText(Text.join(" · ", info));
-            // Миниатюра всего 100×143 — на любом современном экране это мыло, берём полную обложку
-            ((CoverView) v.findViewById(R.id.cover)).load(t.cover != null ? t.cover : t.thumb, t.site.referer());
+            // Миниатюра всего 100×143 — мыло, но в 10 раз легче полной обложки; выбор в настройках
+            boolean full = App.get().prefs.fullCovers() && t.cover != null;
+            ((CoverView) v.findViewById(R.id.cover)).load(full ? t.cover : t.thumb, t.site.referer());
+            bindBadge((TextView) v.findViewById(R.id.badge), t);
             return v;
         }
     }

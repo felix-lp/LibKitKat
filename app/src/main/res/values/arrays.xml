@@ -35,6 +35,28 @@
         <item>secondary</item>
     </string-array>
 
+    <string-array name="covers_names">
+        <item>Чёткие (больше трафика)</item>
+        <item>Миниатюры (быстрее, мыльные)</item>
+    </string-array>
+    <string-array name="covers_values">
+        <item>full</item>
+        <item>thumb</item>
+    </string-array>
+
+    <string-array name="reader_mode_names">
+        <item>Авто: манхва — лентой, манга — справа налево</item>
+        <item>Лента (вебтун)</item>
+        <item>По страницам слева направо</item>
+        <item>По страницам справа налево (манга)</item>
+    </string-array>
+    <string-array name="reader_mode_values">
+        <item>auto</item>
+        <item>webtoon</item>
+        <item>ltr</item>
+        <item>rtl</item>
+    </string-array>
+
     <string-array name="title_lang_names">
         <item>Русские</item>
         <item>Английские / оригинал</item>

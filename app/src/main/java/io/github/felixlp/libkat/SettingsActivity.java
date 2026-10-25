@@ -28,7 +28,7 @@ public class SettingsActivity extends PreferenceActivity implements SharedPrefer
             Prefs.API_DOMAIN, Prefs.PROXY_MODE, Prefs.PROXY_HOST, Prefs.PROXY_PORT, Prefs.PROXY_USER, Prefs.PROXY_PASS);
     private static final List<String> SUMMARY_KEYS = Arrays.asList(
             Prefs.PROXY_MODE, Prefs.PROXY_HOST, Prefs.PROXY_PORT, Prefs.PROXY_USER, Prefs.API_DOMAIN,
-            Prefs.IMAGE_SERVER, Prefs.TITLE_LANG, Prefs.PLAYER, Prefs.QUALITY);
+            Prefs.IMAGE_SERVER, Prefs.TITLE_LANG, Prefs.PLAYER, Prefs.QUALITY, Prefs.COVERS, Prefs.READER_MODE);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

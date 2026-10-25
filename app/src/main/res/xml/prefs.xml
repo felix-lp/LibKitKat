@@ -51,6 +51,18 @@
 
     <PreferenceCategory android:title="Чтение">
         <ListPreference
+            android:defaultValue="auto"
+            android:entries="@array/reader_mode_names"
+            android:entryValues="@array/reader_mode_values"
+            android:key="reader_mode"
+            android:title="Режим читалки по умолчанию" />
+        <ListPreference
+            android:defaultValue="full"
+            android:entries="@array/covers_names"
+            android:entryValues="@array/covers_values"
+            android:key="covers"
+            android:title="Обложки в каталоге" />
+        <ListPreference
             android:defaultValue="compress"
             android:entries="@array/img_server_names"
             android:entryValues="@array/img_server_values"

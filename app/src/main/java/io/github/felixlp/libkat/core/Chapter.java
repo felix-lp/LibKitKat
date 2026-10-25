@@ -15,6 +15,8 @@ public class Chapter {
     public final List<Branch> branches = new ArrayList<>();
 
     public static class Branch {
+        /** id главы в этом переводе — к нему привязаны комментарии. */
+        public int id;
         /** null — ветка по умолчанию (у тайтлов с одним переводом). */
         public Integer branchId;
         public String teams;
@@ -51,6 +53,7 @@ public class Chapter {
                 JSONObject b = arr.optJSONObject(i);
                 if (b == null) continue;
                 Branch br = new Branch();
+                br.id = b.optInt("id", c.id);
                 br.branchId = b.isNull("branch_id") ? null : b.optInt("branch_id");
                 br.createdAt = Text.opt(b, "created_at");
                 JSONArray teams = b.optJSONArray("teams");

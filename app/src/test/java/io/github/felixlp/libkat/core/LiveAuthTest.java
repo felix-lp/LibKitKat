@@ -123,4 +123,62 @@ public class LiveAuthTest {
         assertFalse(before.equals(saved.accessToken));
         assertEquals(saved.userId, api.me().optInt("id"));
     }
+
+    @Test
+    public void catalogCarriesBookmarkStatus() throws Exception {
+        int marked = 0;
+        for (int page = 1; page <= 3; page++) {
+            for (Title t : api.catalog(Site.MANGALIB, null, LibApi.SORT_POPULAR, page).items) {
+                if (t.bookmarkStatus != 0) marked++;
+            }
+        }
+        System.out.println("В топ-180 с закладкой: " + marked);
+        assertTrue(marked > 0);
+    }
+
+    /** Добавить → перенести → удалить на тайтле, которого нет в закладках, — списки пользователя не меняются. */
+    @Test
+    public void bookmarkLifecycleOnFreeTitle() throws Exception {
+        Title free = null;
+        for (int page = 2; page <= 6 && free == null; page++) {
+            for (Title t : api.catalog(Site.MANGALIB, null, LibApi.SORT_POPULAR, page).items) {
+                if (t.bookmarkStatus == 0 && api.bookmark(Site.MANGALIB, t.slugUrl) == null) {
+                    free = t;
+                    break;
+                }
+            }
+        }
+        assertNotNull(free);
+        List<Folder> folders = api.folders(Site.MANGALIB, api.userId());
+        Bookmark b = api.setBookmark(Site.MANGALIB, free.slugUrl, folders.get(1).id);
+        try {
+            assertEquals(folders.get(1).id, api.bookmark(Site.MANGALIB, free.slugUrl).status);
+            Bookmark moved = api.setBookmark(Site.MANGALIB, free.slugUrl, folders.get(2).id);
+            assertEquals(b.id, moved.id);
+            assertEquals(folders.get(2).id, api.bookmark(Site.MANGALIB, free.slugUrl).status);
+        } finally {
+            api.deleteBookmark(Site.MANGALIB, b.id);
+        }
+        assertEquals(null, api.bookmark(Site.MANGALIB, free.slugUrl));
+        System.out.println("Закладка туда-обратно на «" + free.displayName(true) + "» — ок");
+    }
+
+    @Test
+    public void commentsForTitleChapterAnimeEpisode() throws Exception {
+        Title manga = api.catalog(Site.MANGALIB, null, LibApi.SORT_POPULAR, 1).items.get(0);
+        LibApi.Paged<Comment> c = api.comments(Site.MANGALIB, LibApi.POST_MANGA, manga.id, 1);
+        assertFalse(c.items.isEmpty());
+        assertTrue(c.items.get(0).html.length() > 0);
+        int replies = 0;
+        for (Comment x : c.items) if (x.level > 0) replies++;
+        System.out.println("Комментарии к «" + manga.displayName(true) + "»: " + c.items.size() + " (ответов " + replies
+                + "), первый от " + c.items.get(0).user);
+        Chapter ch = api.chapters(Site.MANGALIB, manga.slugUrl).get(0);
+        assertNotNull(api.comments(Site.MANGALIB, LibApi.POST_CHAPTER, ch.branch(null).id, 1));
+
+        Title anime = api.catalog(Site.ANIMELIB, "Фрирен", null, 1).items.get(0);
+        assertFalse(api.comments(Site.ANIMELIB, LibApi.POST_ANIME, anime.id, 1).items.isEmpty());
+        Episode e = api.episodes(anime.slugUrl).get(0);
+        assertFalse(api.comments(Site.ANIMELIB, LibApi.POST_EPISODE, e.id, 1).items.isEmpty());
+    }
 }

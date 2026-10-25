@@ -11,8 +11,8 @@ android {
         minSdk 19
         // Приложение рассчитано на KitKat; высокий targetSdk ничего не даёт, а 28 не требует runtime-разрешений
         targetSdk 28
-        versionCode 3
-        versionName '0.2.0'
+        versionCode 4
+        versionName '0.3.0'
 
         ndk {
             // Tab 3 — armeabi-v7a, x86 оставлен для эмуляторов

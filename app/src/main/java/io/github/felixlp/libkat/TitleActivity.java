@@ -1,10 +1,14 @@
 package io.github.felixlp.libkat;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -27,8 +31,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import io.github.felixlp.libkat.core.Bookmark;
 import io.github.felixlp.libkat.core.Chapter;
 import io.github.felixlp.libkat.core.Episode;
+import io.github.felixlp.libkat.core.Folder;
 import io.github.felixlp.libkat.core.LibApi;
 import io.github.felixlp.libkat.core.Site;
 import io.github.felixlp.libkat.core.Text;
@@ -44,10 +50,13 @@ public class TitleActivity extends Activity {
     private Integer branch;
     private final List<Integer> branchIds = new ArrayList<>();
     private Set<Integer> read = new HashSet<>();
+    private Bookmark bookmark;
+    private List<Folder> folders;
 
     private View header;
     private TextView status;
     private Button continueBtn;
+    private Button bookmarkBtn;
     private RowAdapter adapter;
 
     public static void open(Activity from, Title t) {
@@ -83,6 +92,15 @@ public class TitleActivity extends Activity {
         list.addHeaderView(header, null, false);
         adapter = new RowAdapter();
         list.setAdapter(adapter);
+        list.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                int row = position - 1;
+                if (row < 0 || row >= adapter.getCount()) return false;
+                openRowComments(row);
+                return true;
+            }
+        });
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -94,6 +112,13 @@ public class TitleActivity extends Activity {
 
         status = (TextView) header.findViewById(R.id.status);
         continueBtn = (Button) header.findViewById(R.id.continue_btn);
+        bookmarkBtn = (Button) header.findViewById(R.id.bookmark_btn);
+        bookmarkBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                chooseFolder();
+            }
+        });
         final TextView summary = (TextView) header.findViewById(R.id.summary);
         summary.setOnClickListener(new View.OnClickListener() {
             boolean expanded;
@@ -114,6 +139,7 @@ public class TitleActivity extends Activity {
         read = App.get().history.read(site, slug);
         adapter.notifyDataSetChanged();
         updateContinue();
+        updateBookmarkButton();
     }
 
     @Override
@@ -143,6 +169,8 @@ public class TitleActivity extends Activity {
     private static final class Loaded {
         Title details;
         String detailsError;
+        Bookmark bookmark;
+        List<Folder> folders;
         List<Chapter> chapters;
         List<Episode> episodes;
     }
@@ -158,6 +186,14 @@ public class TitleActivity extends Activity {
                     l.details = api.details(site, slug);
                 } catch (Exception e) {
                     l.detailsError = Bg.message(e);
+                }
+                if (App.get().auth().loggedIn()) {
+                    try {
+                        l.bookmark = api.bookmark(site, slug);
+                        l.folders = api.folders(site, api.userId());
+                    } catch (Exception ignored) {
+                        // Без статуса закладки карточка всё равно полезна
+                    }
                 }
                 if (site.anime) l.episodes = api.episodes(slug);
                 else l.chapters = api.chapters(site, slug);
@@ -176,6 +212,9 @@ public class TitleActivity extends Activity {
                     fillHeader();
                 }
                 App.get().history.touch(title);
+                bookmark = l.bookmark;
+                if (l.folders != null) folders = l.folders;
+                updateBookmarkButton();
                 if (l.chapters != null) chapters = l.chapters;
                 if (l.episodes != null) episodes = l.episodes;
                 App.get().currentTitle = title;
@@ -280,6 +319,126 @@ public class TitleActivity extends Activity {
         App.get().currentTitle = title;
         App.get().currentChapters = chapters;
         ReaderActivity.open(this, title, index, branch);
+    }
+
+    private void updateBookmarkButton() {
+        if (!App.get().auth().loggedIn()) {
+            bookmarkBtn.setText("＋ В закладки (нужен вход)");
+            return;
+        }
+        Folder f = bookmark == null ? null : folder(bookmark.status);
+        bookmarkBtn.setText(bookmark == null ? "＋ В закладки" : "В списке: " + (f == null ? "#" + bookmark.status : f.name) + " ▾");
+    }
+
+    private Folder folder(int id) {
+        if (folders == null) return null;
+        for (Folder f : folders) {
+            if (f.id == id) return f;
+        }
+        return null;
+    }
+
+    private void chooseFolder() {
+        if (!App.get().auth().loggedIn()) {
+            startActivity(new Intent(this, LoginActivity.class));
+            return;
+        }
+        if (folders == null) {
+            Toast.makeText(this, "Загружаю папки…", Toast.LENGTH_SHORT).show();
+            Bg.run(new Bg.Job<List<Folder>>() {
+                @Override
+                public List<Folder> run() throws Exception {
+                    LibApi api = App.get().api();
+                    return api.folders(site, api.userId());
+                }
+            }, new Bg.Done<List<Folder>>() {
+                @Override
+                public void done(List<Folder> result, Exception error) {
+                    if (isFinishing()) return;
+                    if (error != null) {
+                        Toast.makeText(TitleActivity.this, Bg.message(error), Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    folders = result;
+                    chooseFolder();
+                }
+            });
+            return;
+        }
+        final int n = folders.size();
+        String[] labels = new String[bookmark == null ? n : n + 1];
+        for (int i = 0; i < n; i++) {
+            Folder f = folders.get(i);
+            labels[i] = (bookmark != null && bookmark.status == f.id ? "✓ " : "") + f.name;
+        }
+        if (bookmark != null) labels[n] = "✕ Убрать из закладок";
+        new AlertDialog.Builder(this)
+                .setTitle("Папка закладок")
+                .setItems(labels, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (which < n) setFolder(folders.get(which).id);
+                        else setFolder(0);
+                    }
+                })
+                .show();
+    }
+
+    /** @param folderId папка или 0 — убрать из закладок */
+    private void setFolder(final int folderId) {
+        if (bookmark != null && bookmark.status == folderId) return;
+        final Bookmark old = bookmark;
+        bookmarkBtn.setEnabled(false);
+        Bg.run(new Bg.Job<Bookmark>() {
+            @Override
+            public Bookmark run() throws Exception {
+                LibApi api = App.get().api();
+                if (folderId != 0) return api.setBookmark(site, slug, folderId);
+                api.deleteBookmark(site, old.id);
+                return null;
+            }
+        }, new Bg.Done<Bookmark>() {
+            @Override
+            public void done(Bookmark result, Exception error) {
+                if (isFinishing()) return;
+                bookmarkBtn.setEnabled(true);
+                if (error != null) {
+                    Toast.makeText(TitleActivity.this, Bg.message(error), Toast.LENGTH_LONG).show();
+                    return;
+                }
+                bookmark = result;
+                App.get().bookmarkChanges.put(site.id + ":" + slug, folderId);
+                updateBookmarkButton();
+            }
+        });
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        menu.add(0, 1, 0, "Комментарии").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == 1) {
+            CommentsActivity.open(this, site, site.anime ? LibApi.POST_ANIME : LibApi.POST_MANGA, title.id,
+                    title.displayName(App.get().prefs.rusTitles()));
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    /** Долгое нажатие на главу или серию — её комментарии. */
+    private void openRowComments(int row) {
+        if (site.anime) {
+            Episode e = episodes.get(row);
+            CommentsActivity.open(this, site, LibApi.POST_EPISODE, e.id, e.label());
+        } else {
+            Chapter c = chapters.get(chapters.size() - 1 - row);
+            Chapter.Branch b = c.branch(branch);
+            CommentsActivity.open(this, site, LibApi.POST_CHAPTER, b == null ? c.id : b.id, c.label());
+        }
     }
 
     /** Главы — от новых к старым (как на сайте), серии — по порядку. */

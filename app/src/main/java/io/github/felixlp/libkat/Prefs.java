@@ -22,6 +22,8 @@ public class Prefs implements Auth.Store {
     public static final String PLAYER = "player";
     public static final String QUALITY = "video_quality";
     public static final String TITLE_LANG = "title_lang";
+    public static final String COVERS = "covers";
+    public static final String READER_MODE = "reader_mode";
     private static final String SITE = "site";
     private static final String TOKEN = "token";
 
@@ -54,6 +56,16 @@ public class Prefs implements Auth.Store {
 
     public int quality() {
         return parseInt(sp.getString(QUALITY, "720"), 720);
+    }
+
+    /** Полные обложки в сетке или миниатюры 100×143. */
+    public boolean fullCovers() {
+        return !"thumb".equals(sp.getString(COVERS, "full"));
+    }
+
+    /** auto, webtoon, ltr или rtl. */
+    public String readerMode() {
+        return sp.getString(READER_MODE, "auto");
     }
 
     public boolean rusTitles() {

@@ -207,6 +207,8 @@ public class ImageLoader {
 
         int sample = 1;
         while (bounds.outWidth / (sample * 2) >= width) sample *= 2;
+        // Шире 2048 старый GPU текстуру не загрузит — картинка просто не нарисуется
+        while (bounds.outWidth / sample > MAX_TILE) sample *= 2;
         sample *= extraSample;
         BitmapFactory.Options o = new BitmapFactory.Options();
         o.inSampleSize = sample;

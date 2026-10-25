@@ -122,6 +122,15 @@ public class History {
         sp.edit().putInt(key("b", site, slug), branch == null ? -1 : branch).apply();
     }
 
+    /** Режим читалки, выбранный для тайтла в меню, или null. */
+    public synchronized String readerMode(Site site, String slug) {
+        return sp.getString(key("m", site, slug), null);
+    }
+
+    public synchronized void setReaderMode(Site site, String slug, String mode) {
+        sp.edit().putString(key("m", site, slug), mode).apply();
+    }
+
     /** Любимая озвучка аниме. */
     public synchronized String team(String slug) {
         return sp.getString(key("t", Site.ANIMELIB, slug), null);

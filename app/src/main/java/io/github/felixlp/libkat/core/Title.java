@@ -24,6 +24,8 @@ public class Title {
     public String year;
 
     public String summary;
+    /** Папка закладок, в которой лежит тайтл (0 — нет или неизвестно). Приходит с fields[]=userBookmark. */
+    public int bookmarkStatus;
     public final List<String> genres = new ArrayList<>();
     public final List<String> otherNames = new ArrayList<>();
 
@@ -60,6 +62,8 @@ public class Title {
         JSONObject rating = o.optJSONObject("rating");
         if (rating != null) t.rating = Text.opt(rating, "averageFormated");
         t.year = Text.opt(o, "releaseDateString");
+        Bookmark b = Bookmark.parse(o.optJSONObject("userBookmark"));
+        if (b != null) t.bookmarkStatus = b.status;
         Object summary = o.opt("summary");
         if (summary != null && summary != JSONObject.NULL) t.summary = Text.fromDoc(summary).trim();
         names(o.optJSONArray("genres"), t.genres);
@@ -97,6 +101,8 @@ public class Title {
         cover.put("default", this.cover);
         cover.put("thumbnail", thumb);
         o.put("cover", cover);
+        // Тип нужен читалке, чтобы в режиме «авто» выбрать ленту или страницы
+        if (type != null) o.put("type", new JSONObject().put("label", type));
         return o;
     }
 }

@@ -10,13 +10,16 @@ import java.util.Collections;
 import java.util.List;
 
 import okhttp3.HttpUrl;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 
 /** Клиент API *LIB (тот же, что использует сайт). Без Referer и Site-Id сервер отвечает 403. */
 public class LibApi {
     public static final String DEFAULT_DOMAIN = "https://api.cdnlibs.org";
+    private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     public static final String[] DOMAINS = {
             DEFAULT_DOMAIN, "https://api2.mangalib.me", "https://hapi.hentaicdn.org", "https://api.imglib.info"
     };
@@ -64,6 +67,8 @@ public class LibApi {
             if (site.anime && SORT_UPDATED.equals(sortBy)) sortBy = "last_episode_at";
             u.addQueryParameter("sort_by", sortBy).addQueryParameter("sort_type", "desc");
         }
+        // С токеном у каждого тайтла придёт его закладка — для значка папки на плитке
+        if (auth != null && auth.loggedIn()) u.addQueryParameter("fields[]", "userBookmark");
         return titles(site, get(site, u.build()));
     }
 
@@ -224,6 +229,76 @@ public class LibApi {
         return u.toString();
     }
 
+    /** Закладка тайтла или null, если его нет ни в одной папке. */
+    public Bookmark bookmark(Site site, String slug) throws IOException {
+        JSONObject o = get(site, url("/" + site.model() + "/" + slug + "/bookmark").build());
+        return Bookmark.parse(o.optJSONObject("data"));
+    }
+
+    /** Добавить в папку или перенести в другую. */
+    public Bookmark setBookmark(Site site, String slug, int folderId) throws IOException {
+        JSONObject body = new JSONObject();
+        try {
+            body.put("media_type", site.model());
+            body.put("media_slug", slug);
+            body.put("bookmark", new JSONObject().put("status", folderId));
+            body.put("meta", new JSONObject());
+        } catch (JSONException e) {
+            throw new IllegalStateException(e);
+        }
+        Bookmark b = Bookmark.parse(call(site, "POST", url("/bookmarks").build(), body).optJSONObject("data"));
+        if (b == null) throw new ApiException(0, "Сервер не подтвердил закладку");
+        return b;
+    }
+
+    public void deleteBookmark(Site site, int bookmarkId) throws IOException {
+        call(site, "DELETE", url("/bookmarks/" + bookmarkId).addQueryParameter("media_type", site.model()).build(), null);
+    }
+
+    /** Тип записи для комментариев. */
+    public static final String POST_MANGA = "manga";
+    public static final String POST_ANIME = "anime";
+    public static final String POST_CHAPTER = "chapter";
+    public static final String POST_EPISODE = "episodes";
+
+    /**
+     * Страница комментариев: корневые с ответами под каждым (ответы приходят отдельным плоским списком).
+     */
+    public Paged<Comment> comments(Site site, String postType, int postId, int page) throws IOException {
+        HttpUrl u = url("/comments")
+                .addQueryParameter("post_id", String.valueOf(postId))
+                .addQueryParameter("post_type", postType)
+                .addQueryParameter("page", String.valueOf(page))
+                .build();
+        JSONObject o = get(site, u);
+        JSONObject data = o.optJSONObject("data");
+        List<Comment> out = new ArrayList<>();
+        if (data != null) {
+            List<Comment> replies = parseComments(data.optJSONArray("replies"));
+            for (Comment root : parseComments(data.optJSONArray("root"))) {
+                out.add(root);
+                List<Comment> thread = new ArrayList<>();
+                for (Comment r : replies) {
+                    if (r.rootId == root.id) thread.add(r);
+                }
+                Collections.sort(thread, Comment.BY_TIME);
+                out.addAll(thread);
+            }
+        }
+        JSONObject meta = o.optJSONObject("meta");
+        return new Paged<>(out, meta != null && meta.optBoolean("has_next_page", false));
+    }
+
+    private static List<Comment> parseComments(JSONArray arr) {
+        List<Comment> out = new ArrayList<>();
+        if (arr == null) return out;
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject c = arr.optJSONObject(i);
+            if (c != null) out.add(Comment.parse(c));
+        }
+        return out;
+    }
+
     /** id пользователя из токена; у старого токена без id — спрашиваем сервер. */
     public int userId() throws IOException {
         Token t = auth == null ? null : auth.token();
@@ -246,17 +321,22 @@ public class LibApi {
     }
 
     public JSONObject get(Site site, HttpUrl url) throws IOException {
+        return call(site, "GET", url, null);
+    }
+
+    /** @param body JSON для POST или null */
+    private JSONObject call(Site site, String method, HttpUrl url, JSONObject body) throws IOException {
         Token t = auth == null ? null : auth.token();
         if (t != null && t.nearExpiry()) {
             auth.refresh();
             t = auth.token();
         }
-        try (Response r = client.newCall(request(site, url, t)).execute()) {
+        try (Response r = client.newCall(request(site, method, url, body, t)).execute()) {
             if (r.code() != 401 || t == null) return parse(r);
         }
         // Токен протух раньше срока — пробуем обновить один раз
         if (auth.refresh()) {
-            try (Response r = client.newCall(request(site, url, auth.token())).execute()) {
+            try (Response r = client.newCall(request(site, method, url, body, auth.token())).execute()) {
                 return parse(r);
             }
         }
@@ -264,11 +344,14 @@ public class LibApi {
         throw new ApiException(401, "Сессия истекла — войдите снова");
     }
 
-    private static Request request(Site site, HttpUrl url, Token t) {
+    private static Request request(Site site, String method, HttpUrl url, JSONObject body, Token t) {
         Request.Builder b = new Request.Builder().url(url)
                 .header("Accept", "application/json")
                 .header("Site-Id", String.valueOf(site.id))
-                .header("Referer", site.referer());
+                .header("Referer", site.referer())
+                .header("Origin", site.web);
+        if (body != null) b.method(method, RequestBody.create(JSON, body.toString()));
+        else if (!"GET".equals(method)) b.method(method, RequestBody.create(JSON, "{}"));
         if (t != null) b.header("Authorization", t.header());
         return b.build();
     }

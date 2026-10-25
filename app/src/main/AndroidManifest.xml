@@ -43,6 +43,10 @@
             android:theme="@style/Theme.LibKat.Player" />
 
         <activity
+            android:name=".CommentsActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <activity
             android:name=".LoginActivity"
             android:label="Вход"
             android:windowSoftInputMode="adjustResize" />

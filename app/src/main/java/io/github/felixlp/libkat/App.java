@@ -2,7 +2,9 @@ package io.github.felixlp.libkat;
 
 import android.app.Application;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import io.github.felixlp.libkat.core.Auth;
 import io.github.felixlp.libkat.core.Chapter;
@@ -29,6 +31,8 @@ public class App extends Application {
     /** Открытый тайтл и его главы — чтобы не тянуть список заново при переходе в читалку. */
     public Title currentTitle;
     public List<Chapter> currentChapters;
+    /** Смены папок из карточки тайтла, чтобы каталог показал их без перезагрузки: "site:slug" → папка (0 — убран). */
+    public final Map<String, Integer> bookmarkChanges = new HashMap<>();
 
     public static App get() {
         return instance;
