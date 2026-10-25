@@ -2,9 +2,8 @@ plugins {
     id 'com.android.application'
 }
 
-// Версия берётся из тега релиза (v1.2.3) при сборке в GitHub Actions, иначе — значение ниже
-def releaseTag = System.getenv('GITHUB_REF_NAME')
-def appVersion = (releaseTag != null && releaseTag ==~ /v\d+\.\d+\.\d+/) ? releaseTag.substring(1) : '0.4.0'
+// Единственное место с версией: при пуше с новой версией GitHub Actions сам выпустит релиз vX.Y.Z
+def appVersion = '0.4.0'
 def versionParts = appVersion.tokenize('.')*.toInteger()
 
 android {

@@ -1,9 +1,11 @@
-# Тег vX.Y.Z → сборка APK и релиз на GitHub. Приложение берёт обновления из последнего релиза.
+# Пуш с новой версией в app/build.gradle (def appVersion) → сборка APK и релиз vX.Y.Z.
+# Описание релиза — RELEASE_NOTES.md. Приложение берёт обновления из последнего релиза.
 name: Release
 
 on:
   push:
-    tags: ['v*.*.*']
+    branches: ['**']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,21 +16,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Версия и наличие релиза
+        id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(sed -n "s/^def appVersion = '\([0-9.]*\)'.*/\1/p" app/build.gradle)
+          test -n "$v"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" > /dev/null 2>&1; then
+            echo "Релиз v$v уже есть — пропускаю"
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-java@v4
+        if: steps.ver.outputs.exists != 'true'
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Сборка и офлайн-тесты
-        run: ./gradlew --no-daemon testDebugUnitTest assembleRelease
-
-      - name: Описание релиза из сообщения тега
+        if: steps.ver.outputs.exists != 'true'
         run: |
-          git fetch --force origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
-          git tag -l --format='%(contents)' "${GITHUB_REF_NAME}" > notes.md
-          cp app/build/outputs/apk/release/app-release.apk "LibKat-${GITHUB_REF_NAME}.apk"
+          ./gradlew --no-daemon testDebugUnitTest assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "LibKat-v${{ steps.ver.outputs.version }}.apk"
 
       - uses: softprops/action-gh-release@v2
+        if: steps.ver.outputs.exists != 'true'
         with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: LibKat ${{ steps.ver.outputs.version }}
+          body_path: RELEASE_NOTES.md
           files: LibKat-*.apk
-          body_path: notes.md
