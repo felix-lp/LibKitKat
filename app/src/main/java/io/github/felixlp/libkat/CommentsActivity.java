@@ -108,6 +108,18 @@ public class CommentsActivity extends Activity {
         });
     }
 
+    /** Заполнить item_comment — общий для этого экрана и блока комментариев под главой. */
+    static void bind(View v, Comment c) {
+        float d = v.getResources().getDisplayMetrics().density;
+        // Ответы — с отступом, глубже трёх уровней не сдвигаем, иначе на 7" не останется места
+        v.setPadding((int) ((12 + 20 * Math.min(c.level, 3)) * d), v.getPaddingTop(), v.getPaddingRight(),
+                v.getPaddingBottom());
+        String when = c.createdAt > 0 ? DateUtils.getRelativeTimeSpanString(c.createdAt).toString() : "";
+        String votes = c.up > 0 || c.down > 0 ? "  ▲" + c.up + " ▼" + c.down : "";
+        ((TextView) v.findViewById(R.id.head)).setText((c.level > 0 ? "↳ " : "") + c.user + " · " + when + votes);
+        ((TextView) v.findViewById(R.id.body)).setText(Html.fromHtml(c.html).toString().trim());
+    }
+
     private final class CommentAdapter extends BaseAdapter {
         @Override
         public int getCount() {
@@ -133,15 +145,7 @@ public class CommentsActivity extends Activity {
         public View getView(int position, View convertView, ViewGroup parent) {
             View v = convertView != null ? convertView
                     : LayoutInflater.from(CommentsActivity.this).inflate(R.layout.item_comment, parent, false);
-            Comment c = items.get(position);
-            float d = getResources().getDisplayMetrics().density;
-            // Ответы — с отступом, глубже трёх уровней не сдвигаем, иначе на 7" не останется места
-            v.setPadding((int) ((12 + 20 * Math.min(c.level, 3)) * d), v.getPaddingTop(), v.getPaddingRight(),
-                    v.getPaddingBottom());
-            String when = c.createdAt > 0 ? DateUtils.getRelativeTimeSpanString(c.createdAt).toString() : "";
-            String votes = c.up > 0 || c.down > 0 ? "  ▲" + c.up + " ▼" + c.down : "";
-            ((TextView) v.findViewById(R.id.head)).setText((c.level > 0 ? "↳ " : "") + c.user + " · " + when + votes);
-            ((TextView) v.findViewById(R.id.body)).setText(Html.fromHtml(c.html).toString().trim());
+            bind(v, items.get(position));
             return v;
         }
     }

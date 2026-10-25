@@ -3,7 +3,7 @@ plugins {
 }
 
 // Единственное место с версией: при пуше с новой версией GitHub Actions сам выпустит релиз vX.Y.Z
-def appVersion = '0.4.0'
+def appVersion = '0.5.0'
 def versionParts = appVersion.tokenize('.')*.toInteger()
 
 android {

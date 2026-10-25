@@ -56,6 +56,11 @@
             android:entryValues="@array/reader_mode_values"
             android:key="reader_mode"
             android:title="Режим читалки по умолчанию" />
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="comments_inline"
+            android:summary="Выключено — только по кнопке «Комментарии»"
+            android:title="Комментарии под главой" />
         <ListPreference
             android:defaultValue="full"
             android:entries="@array/covers_names"

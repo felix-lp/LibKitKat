@@ -66,7 +66,15 @@ public class ReaderActivity extends Activity {
     private TextView indicator;
     private Button prevBtn;
     private Button nextBtn;
+    private Button commentsBtn;
     private final PageAdapter adapter = new PageAdapter();
+    /** Комментарии под лентой и на экране «Конец главы» постраничного режима. */
+    private CommentsBlock listComments;
+    private CommentsBlock endComments;
+    private View endScreen;
+    private TextView endTitle;
+    private Button endNextBtn;
+    private boolean showingEnd;
 
     public static void open(Activity from, Title title, int index, Integer branch) {
         Intent i = new Intent(from, ReaderActivity.class);
@@ -129,8 +137,7 @@ public class ReaderActivity extends Activity {
                 if (index + 1 < chapters.size()) loadChapter(index + 1, 0);
             }
         });
-        Button commentsBtn = new Button(this);
-        commentsBtn.setText("Комментарии к главе");
+        commentsBtn = new Button(this);
         commentsBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -141,6 +148,9 @@ public class ReaderActivity extends Activity {
         footer.setOrientation(LinearLayout.VERTICAL);
         footer.addView(nextBtn);
         footer.addView(commentsBtn);
+        listComments = new CommentsBlock(this);
+        footer.addView(listComments.view());
+        buildEndScreen();
         list.addHeaderView(prevBtn, null, false);
         list.addFooterView(footer, null, false);
         list.setAdapter(adapter);
@@ -224,9 +234,161 @@ public class ReaderActivity extends Activity {
     }
 
     private void applyMode() {
+        if (!isPaged()) hideEnd();
         list.setVisibility(isPaged() ? View.GONE : View.VISIBLE);
-        paged.setVisibility(isPaged() ? View.VISIBLE : View.GONE);
+        paged.setVisibility(isPaged() && !showingEnd ? View.VISIBLE : View.GONE);
         paged.setRtl(RTL.equals(mode));
+        applyInline();
+    }
+
+    /** Комментарии под главой включены — блок виден, кнопка ведёт на полный экран; выключены — только кнопка. */
+    private void applyInline() {
+        boolean inline = App.get().prefs.inlineComments();
+        listComments.view().setVisibility(inline ? View.VISIBLE : View.GONE);
+        endComments.view().setVisibility(inline ? View.VISIBLE : View.GONE);
+        commentsBtn.setText(inline ? "Открыть комментарии отдельно" : "Комментарии к главе");
+        if (inline) updateIndicator();
+    }
+
+    /** Экран после последней страницы в постраничном режиме: следующая глава и комментарии. */
+    private void buildEndScreen() {
+        float d = getResources().getDisplayMetrics().density;
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(0, (int) (48 * d), 0, 0);
+        endTitle = new TextView(this);
+        endTitle.setTextSize(18);
+        endTitle.setGravity(android.view.Gravity.CENTER);
+        endTitle.setPadding((int) (12 * d), 0, (int) (12 * d), (int) (12 * d));
+        box.addView(endTitle);
+        endNextBtn = new Button(this);
+        endNextBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                nextChapter();
+            }
+        });
+        box.addView(endNextBtn);
+        Button back = new Button(this);
+        back.setText("Вернуться к последней странице");
+        back.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                turn(-1);
+            }
+        });
+        box.addView(back);
+        endComments = new CommentsBlock(this);
+        box.addView(endComments.view());
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.setBackgroundColor(getResources().getColor(R.color.bg));
+        scroll.addView(box);
+        endScreen = scroll;
+        endScreen.setVisibility(View.GONE);
+        ((FrameLayout) list.getParent()).addView(endScreen, 2, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+    }
+
+    private void showEnd() {
+        showingEnd = true;
+        endScreen.setVisibility(View.VISIBLE);
+        paged.setVisibility(View.GONE);
+        endComments.start();
+        if (index < chapters.size()) App.get().history.markRead(site, slug, chapters.get(index).id);
+        indicator.setText("Конец главы");
+    }
+
+    private void hideEnd() {
+        if (!showingEnd) return;
+        showingEnd = false;
+        endScreen.setVisibility(View.GONE);
+        if (isPaged()) paged.setVisibility(View.VISIBLE);
+    }
+
+    /** Настройки прямо в читалке: режим тайтла, сервер картинок, комментарии под главой. */
+    private void showReaderSettings() {
+        float d = getResources().getDisplayMetrics().density;
+        int pad = (int) (16 * d);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(pad, pad / 2, pad, pad / 2);
+
+        final String[] modes = {WEBTOON, LTR, RTL};
+        String[] modeLabels = {"Лента (манхва, вебтуны)", "По страницам: слева направо", "По страницам: справа налево (манга)"};
+        box.addView(header("Режим для этого тайтла"));
+        box.addView(radios(modeLabels, indexOf(modes, mode), new Pick() {
+            @Override
+            public void pick(int i) {
+                switchMode(modes[i]);
+            }
+        }));
+
+        final String[] servers = {"compress", "main", "secondary"};
+        String[] serverLabels = {"Сжатый (быстрее, JPEG)", "Первый (оригинал)", "Второй (оригинал)"};
+        box.addView(header("Сервер изображений"));
+        box.addView(radios(serverLabels, indexOf(servers, App.get().prefs.imageServer()), new Pick() {
+            @Override
+            public void pick(int i) {
+                App.get().prefs.sp.edit().putString(Prefs.IMAGE_SERVER, servers[i]).apply();
+                // Адреса страниц зависят от сервера — перечитываем главу с той же страницы
+                if (!chapters.isEmpty()) loadChapter(index, currentPage());
+            }
+        }));
+
+        box.addView(header("Комментарии"));
+        android.widget.CheckBox inline = new android.widget.CheckBox(this);
+        inline.setText("Показывать под главой");
+        inline.setChecked(App.get().prefs.inlineComments());
+        inline.setOnCheckedChangeListener(new android.widget.CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(android.widget.CompoundButton b, boolean checked) {
+                App.get().prefs.sp.edit().putBoolean(Prefs.INLINE_COMMENTS, checked).apply();
+                applyInline();
+            }
+        });
+        box.addView(inline);
+
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.addView(box);
+        new AlertDialog.Builder(this).setTitle("Настройки чтения").setView(scroll)
+                .setPositiveButton("Готово", null).show();
+    }
+
+    private interface Pick {
+        void pick(int index);
+    }
+
+    private TextView header(String text) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextColor(getResources().getColor(R.color.accent));
+        t.setPadding(0, (int) (12 * getResources().getDisplayMetrics().density), 0, 0);
+        return t;
+    }
+
+    private android.widget.RadioGroup radios(String[] labels, int checked, final Pick pick) {
+        android.widget.RadioGroup g = new android.widget.RadioGroup(this);
+        for (int i = 0; i < labels.length; i++) {
+            android.widget.RadioButton b = new android.widget.RadioButton(this);
+            b.setId(1000 + i);
+            b.setText(labels[i]);
+            g.addView(b);
+        }
+        if (checked >= 0) g.check(1000 + checked);
+        g.setOnCheckedChangeListener(new android.widget.RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(android.widget.RadioGroup group, int id) {
+                pick.pick(id - 1000);
+            }
+        });
+        return g;
+    }
+
+    private static int indexOf(String[] values, String v) {
+        for (int i = 0; i < values.length; i++) {
+            if (values[i].equals(v)) return i;
+        }
+        return -1;
     }
 
     private void switchMode(String newMode) {
@@ -247,7 +409,7 @@ public class ReaderActivity extends Activity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, 1, 0, "Режим чтения").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        menu.add(0, 1, 0, "⚙ Настройки").setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
         menu.add(0, 2, 0, "Комментарии").setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
         return true;
     }
@@ -255,22 +417,7 @@ public class ReaderActivity extends Activity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == 1) {
-            final String[] values = {WEBTOON, LTR, RTL};
-            String[] labels = {"Лента (манхва, вебтуны)", "По страницам: слева направо", "По страницам: справа налево (манга)"};
-            int checked = 0;
-            for (int i = 0; i < values.length; i++) {
-                if (values[i].equals(mode)) checked = i;
-            }
-            new AlertDialog.Builder(this)
-                    .setTitle("Режим для этого тайтла")
-                    .setSingleChoiceItems(labels, checked, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.dismiss();
-                            switchMode(values[which]);
-                        }
-                    })
-                    .show();
+            showReaderSettings();
             return true;
         }
         if (item.getItemId() == 2) {
@@ -316,6 +463,12 @@ public class ReaderActivity extends Activity {
         urls = Collections.emptyList();
         adapter.notifyDataSetChanged();
         paged.bind("chapter:" + gen, 0);
+        hideEnd();
+        Chapter.Branch cb = c.branch(branch);
+        int commentsId = cb == null ? c.id : cb.id;
+        listComments.reset(site, LibApi.POST_CHAPTER, commentsId);
+        endComments.reset(site, LibApi.POST_CHAPTER, commentsId);
+        endTitle.setText("Конец: " + c.label());
         updateButtons();
         status.setText("Загрузка главы…");
         Chapter.Branch b = c.branch(branch);
@@ -362,12 +515,11 @@ public class ReaderActivity extends Activity {
 
     private void updateButtons() {
         prevBtn.setVisibility(index > 0 ? View.VISIBLE : View.GONE);
-        if (index + 1 < chapters.size()) {
-            nextBtn.setText("Следующая: " + chapters.get(index + 1).label() + " →");
-            nextBtn.setEnabled(true);
-        } else {
-            nextBtn.setText("Это последняя глава");
-            nextBtn.setEnabled(false);
+        boolean hasNext = index + 1 < chapters.size();
+        String label = hasNext ? "Следующая: " + chapters.get(index + 1).label() + " →" : "Это последняя глава";
+        for (Button b : new Button[]{nextBtn, endNextBtn}) {
+            b.setText(label);
+            b.setEnabled(hasNext);
         }
     }
 
@@ -384,6 +536,12 @@ public class ReaderActivity extends Activity {
             atEnd = list.getLastVisiblePosition() >= footer;
         }
         if (atEnd && index < chapters.size()) App.get().history.markRead(site, slug, chapters.get(index).id);
+        // В ленте комментарии начинают грузиться, когда до них долистали
+        if (atEnd && !isPaged() && App.get().prefs.inlineComments()) listComments.start();
+        if (showingEnd) {
+            indicator.setText("Конец главы");
+            return;
+        }
         indicator.setText((currentPage() + 1) + " / " + pages.size());
     }
 
@@ -413,21 +571,36 @@ public class ReaderActivity extends Activity {
 
     private void turn(int delta) {
         if (pages.isEmpty()) return;
+        if (showingEnd) {
+            // С экрана «Конец главы»: вперёд — следующая глава, назад — последняя страница
+            if (delta > 0) {
+                nextChapter();
+            } else {
+                hideEnd();
+                showPage(pages.size() - 1);
+            }
+            return;
+        }
         int next = pagedIndex + delta;
         if (next >= 0 && next < pages.size()) {
             showPage(next);
         } else if (next >= pages.size()) {
-            if (index + 1 < chapters.size()) {
-                Toast.makeText(this, chapters.get(index + 1).label(), Toast.LENGTH_SHORT).show();
-                loadChapter(index + 1, 0);
-            } else {
-                Toast.makeText(this, "Это последняя глава", Toast.LENGTH_SHORT).show();
-            }
+            if (App.get().prefs.inlineComments()) showEnd();
+            else nextChapter();
         } else if (index > 0) {
             Toast.makeText(this, chapters.get(index - 1).label(), Toast.LENGTH_SHORT).show();
             loadChapter(index - 1, LAST_PAGE);
         } else {
             Toast.makeText(this, "Это первая страница", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void nextChapter() {
+        if (index + 1 < chapters.size()) {
+            Toast.makeText(this, chapters.get(index + 1).label(), Toast.LENGTH_SHORT).show();
+            loadChapter(index + 1, 0);
+        } else {
+            Toast.makeText(this, "Это последняя глава", Toast.LENGTH_SHORT).show();
         }
     }
 

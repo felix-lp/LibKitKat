@@ -24,6 +24,7 @@ public class Prefs implements Auth.Store {
     public static final String TITLE_LANG = "title_lang";
     public static final String COVERS = "covers";
     public static final String READER_MODE = "reader_mode";
+    public static final String INLINE_COMMENTS = "comments_inline";
     private static final String SITE = "site";
     private static final String TOKEN = "token";
 
@@ -66,6 +67,11 @@ public class Prefs implements Auth.Store {
     /** auto, webtoon, ltr или rtl. */
     public String readerMode() {
         return sp.getString(READER_MODE, "auto");
+    }
+
+    /** Комментарии прямо под главой в читалке (иначе — только по кнопке). */
+    public boolean inlineComments() {
+        return sp.getBoolean(INLINE_COMMENTS, true);
     }
 
     public boolean rusTitles() {
