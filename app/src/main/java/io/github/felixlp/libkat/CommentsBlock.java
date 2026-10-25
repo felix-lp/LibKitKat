@@ -12,10 +12,11 @@ import io.github.felixlp.libkat.core.Comment;
 import io.github.felixlp.libkat.core.LibApi;
 import io.github.felixlp.libkat.core.Site;
 
-/** Комментарии к главе прямо в читалке, под последней страницей. Грузятся, только когда до них дочитали. */
+/** Комментарии к странице главы прямо в читалке. Грузятся по требованию (start). */
 final class CommentsBlock {
     private final Context context;
     private final LinearLayout root;
+    private final TextView title;
     private final LinearLayout list;
     private final TextView status;
     private final Button more;
@@ -23,6 +24,7 @@ final class CommentsBlock {
     private Site site;
     private String postType;
     private int postId;
+    private int postPage;
     private int page;
     private boolean started;
     private boolean loading;
@@ -36,8 +38,7 @@ final class CommentsBlock {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(0, (int) (12 * d), 0, (int) (24 * d));
 
-        TextView title = new TextView(context);
-        title.setText("Комментарии к главе");
+        title = new TextView(context);
         title.setTextSize(18);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setPadding((int) (12 * d), 0, 0, (int) (4 * d));
@@ -68,11 +69,14 @@ final class CommentsBlock {
         return root;
     }
 
-    void reset(Site site, String postType, int postId) {
+    void reset(Site site, String postType, int postId, int postPage, String heading) {
         generation++;
         this.site = site;
         this.postType = postType;
         this.postId = postId;
+        this.postPage = postPage;
+        title.setText(heading);
+        title.setVisibility(heading == null || heading.length() == 0 ? View.GONE : View.VISIBLE);
         page = 0;
         started = false;
         loading = false;
@@ -98,7 +102,7 @@ final class CommentsBlock {
         Bg.run(new Bg.Job<LibApi.Paged<Comment>>() {
             @Override
             public LibApi.Paged<Comment> run() throws Exception {
-                return App.get().api().comments(site, postType, postId, next);
+                return App.get().api().comments(site, postType, postId, postPage, next);
             }
         }, new Bg.Done<LibApi.Paged<Comment>>() {
             @Override

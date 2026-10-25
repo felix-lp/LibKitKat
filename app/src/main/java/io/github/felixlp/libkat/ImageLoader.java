@@ -129,7 +129,22 @@ public class ImageLoader {
         });
     }
 
-    /** Только скачать на диск — для следующих страниц главы. */
+    private static final Target NOOP = new Target() {
+        @Override
+        public void onImage(String key, Decoded image) {
+        }
+
+        @Override
+        public void onImageError(String key, String message) {
+        }
+    };
+
+    /** Скачать и декодировать в память заранее — следующая страница откроется мгновенно. */
+    public void preload(String url, String referer, int width) {
+        load(url, referer, width, NOOP);
+    }
+
+    /** Только скачать на диск — для страниц подальше. */
     public void prefetch(final String url, final String referer) {
         if (disk.get(url) != null || !prefetching.add(url)) return;
         network.execute(new Runnable() {

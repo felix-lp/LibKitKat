@@ -166,7 +166,7 @@ public class LiveAuthTest {
     @Test
     public void commentsForTitleChapterAnimeEpisode() throws Exception {
         Title manga = api.catalog(Site.MANGALIB, null, LibApi.SORT_POPULAR, 1).items.get(0);
-        LibApi.Paged<Comment> c = api.comments(Site.MANGALIB, LibApi.POST_MANGA, manga.id, 1);
+        LibApi.Paged<Comment> c = api.comments(Site.MANGALIB, LibApi.POST_MANGA, manga.id, 0, 1);
         assertFalse(c.items.isEmpty());
         assertTrue(c.items.get(0).html.length() > 0);
         int replies = 0;
@@ -174,11 +174,14 @@ public class LiveAuthTest {
         System.out.println("Комментарии к «" + manga.displayName(true) + "»: " + c.items.size() + " (ответов " + replies
                 + "), первый от " + c.items.get(0).user);
         Chapter ch = api.chapters(Site.MANGALIB, manga.slugUrl).get(0);
-        assertNotNull(api.comments(Site.MANGALIB, LibApi.POST_CHAPTER, ch.branch(null).id, 1));
+        // У главы комментарии постраничные: для каждой страницы — свои
+        LibApi.Paged<Comment> p1 = api.comments(Site.MANGALIB, LibApi.POST_CHAPTER, ch.branch(null).id, 1, 1);
+        assertNotNull(p1);
+        System.out.println("Комментарии к стр. 1 первой главы: " + p1.items.size());
 
         Title anime = api.catalog(Site.ANIMELIB, "Фрирен", null, 1).items.get(0);
-        assertFalse(api.comments(Site.ANIMELIB, LibApi.POST_ANIME, anime.id, 1).items.isEmpty());
+        assertFalse(api.comments(Site.ANIMELIB, LibApi.POST_ANIME, anime.id, 0, 1).items.isEmpty());
         Episode e = api.episodes(anime.slugUrl).get(0);
-        assertFalse(api.comments(Site.ANIMELIB, LibApi.POST_EPISODE, e.id, 1).items.isEmpty());
+        assertFalse(api.comments(Site.ANIMELIB, LibApi.POST_EPISODE, e.id, 0, 1).items.isEmpty());
     }
 }

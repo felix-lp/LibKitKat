@@ -26,6 +26,7 @@ public class CommentsActivity extends Activity {
     private Site site;
     private String postType;
     private int postId;
+    private int postPage;
     private int page;
     private boolean hasNext = true;
     private boolean loading;
@@ -34,7 +35,13 @@ public class CommentsActivity extends Activity {
     private CommentAdapter adapter;
 
     static void open(Activity from, Site site, String postType, int postId, String title) {
+        open(from, site, postType, postId, 0, title);
+    }
+
+    /** @param postPage страница главы (у глав комментарии постраничные) или 0 */
+    static void open(Activity from, Site site, String postType, int postId, int postPage, String title) {
         Intent i = new Intent(from, CommentsActivity.class);
+        i.putExtra("page", postPage);
         i.putExtra("site", site.id);
         i.putExtra("type", postType);
         i.putExtra("id", postId);
@@ -48,6 +55,7 @@ public class CommentsActivity extends Activity {
         site = Site.byId(getIntent().getIntExtra("site", 1));
         postType = getIntent().getStringExtra("type");
         postId = getIntent().getIntExtra("id", 0);
+        postPage = getIntent().getIntExtra("page", 0);
         setTitle("Комментарии: " + getIntent().getStringExtra("title"));
         if (getActionBar() != null) getActionBar().setDisplayHomeAsUpEnabled(true);
 
@@ -87,7 +95,7 @@ public class CommentsActivity extends Activity {
         Bg.run(new Bg.Job<LibApi.Paged<Comment>>() {
             @Override
             public LibApi.Paged<Comment> run() throws Exception {
-                return App.get().api().comments(site, postType, postId, next);
+                return App.get().api().comments(site, postType, postId, postPage, next);
             }
         }, new Bg.Done<LibApi.Paged<Comment>>() {
             @Override

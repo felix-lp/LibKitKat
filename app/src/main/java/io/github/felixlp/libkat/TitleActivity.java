@@ -97,8 +97,7 @@ public class TitleActivity extends Activity {
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
                 int row = position - 1;
                 if (row < 0 || row >= adapter.getCount()) return false;
-                openRowComments(row);
-                return true;
+                return openRowComments(row);
             }
         });
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -429,16 +428,12 @@ public class TitleActivity extends Activity {
         return super.onOptionsItemSelected(item);
     }
 
-    /** Долгое нажатие на главу или серию — её комментарии. */
-    private void openRowComments(int row) {
-        if (site.anime) {
-            Episode e = episodes.get(row);
-            CommentsActivity.open(this, site, LibApi.POST_EPISODE, e.id, e.label());
-        } else {
-            Chapter c = chapters.get(chapters.size() - 1 - row);
-            Chapter.Branch b = c.branch(branch);
-            CommentsActivity.open(this, site, LibApi.POST_CHAPTER, b == null ? c.id : b.id, c.label());
-        }
+    /** Долгое нажатие на серию — её комментарии (у глав они постраничные и живут в читалке). */
+    private boolean openRowComments(int row) {
+        if (!site.anime) return false;
+        Episode e = episodes.get(row);
+        CommentsActivity.open(this, site, LibApi.POST_EPISODE, e.id, e.label());
+        return true;
     }
 
     /** Главы — от новых к старым (как на сайте), серии — по порядку. */

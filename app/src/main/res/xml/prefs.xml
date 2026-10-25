@@ -59,8 +59,8 @@
         <CheckBoxPreference
             android:defaultValue="true"
             android:key="comments_inline"
-            android:summary="Выключено — только по кнопке «Комментарии»"
-            android:title="Комментарии под главой" />
+            android:summary="Плашка под каждой страницей ленты и кнопка 💬 в постраничном режиме. Выключено — только в меню читалки"
+            android:title="Комментарии под страницами" />
         <ListPreference
             android:defaultValue="full"
             android:entries="@array/covers_names"

@@ -263,14 +263,16 @@ public class LibApi {
 
     /**
      * Страница комментариев: корневые с ответами под каждым (ответы приходят отдельным плоским списком).
+     *
+     * @param postPage для глав — номер страницы (у главы своих комментариев нет, только у страниц), иначе 0
      */
-    public Paged<Comment> comments(Site site, String postType, int postId, int page) throws IOException {
-        HttpUrl u = url("/comments")
+    public Paged<Comment> comments(Site site, String postType, int postId, int postPage, int page) throws IOException {
+        HttpUrl.Builder b = url("/comments")
                 .addQueryParameter("post_id", String.valueOf(postId))
                 .addQueryParameter("post_type", postType)
-                .addQueryParameter("page", String.valueOf(page))
-                .build();
-        JSONObject o = get(site, u);
+                .addQueryParameter("page", String.valueOf(page));
+        if (postPage > 0) b.addQueryParameter("post_page", String.valueOf(postPage));
+        JSONObject o = get(site, b.build());
         JSONObject data = o.optJSONObject("data");
         List<Comment> out = new ArrayList<>();
         if (data != null) {
